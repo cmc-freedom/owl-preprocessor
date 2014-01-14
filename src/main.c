@@ -89,9 +89,9 @@ init (void)
 }
 
 void
-preprocess_file (const char *filename)
+preprocess_file (const String filename)
 {
-  const char *suffix = ".output";
+  const String suffix = ".output";
   const size_t suffix_length = strlen(suffix);
 
   FILE *fin = fopen(filename, "r");
@@ -100,7 +100,7 @@ preprocess_file (const char *filename)
 
   size_t length = strlen(filename);
 
-  char *output_filename = (char *) malloc(length + suffix_length + 1);
+  String output_filename = (String) malloc(length + suffix_length + 1);
   assert(output_filename != NULL);
   strcpy(output_filename, filename);
 
@@ -120,6 +120,9 @@ preprocess_file (const char *filename)
   FILE *fout = fopen(output_filename, "w");
   if (fin == NULL)
     printf("Cannot open file \"%s\" for writting.", output_filename);
+  free(output_filename);
+
+  // ...
 
   fclose(fin);
   fclose(fout);
