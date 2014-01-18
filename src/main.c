@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,35 +25,54 @@ struct
 void
 backtrace (void)
 {
-  printf("BACKTRACE:\n");
+  fprintf(stderr, "BACKTRACE:\n");
   for (size_t i = 0; i < stack.size; ++ i)
-    printf("    %s (%d line)\n", stack.data[i].string, stack.data[i].line);
-  printf("\n");
+    fprintf(stderr, "  %s (%d line)\n", stack.data[i].string,
+            stack.data[i].line);
+
+  fprintf(stderr, "\n");
 }
 
 void
-stop (const String string)
+stop_with_line (int line, const String format, ...)
 {
   backtrace();
-  printf("%s\n", string);
+  va_list args;
+  va_start(args, format);
+  fprintf(stderr, "%d line: ", line);
+  vfprintf(stderr, format, args);
+  fprintf(stderr, "\n");
+  va_end(args);
   exit(1);
 }
 
+#define stop(...) stop_with_line(__LINE__, __VA_ARGS__)
+
 void
-append (const String string, int line)
+begin_with_line (int line, const String format, ...)
 {
-  size_t length = strlen(string);
+  static const int MAX_LENGTH = 1000 * 1000;
+  static String buffer = NULL;
+  if (buffer == NULL)
+    {
+      buffer = (String) malloc(MAX_LENGTH + 1);
+      if (buffer == NULL)
+        stop("Cannot malloc memory for string buffer");
+    }
+
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buffer, MAX_LENGTH + 1, format, args);
+  va_end(args);
+
+  size_t length = strlen(buffer);
   stack.data[stack.size].line = line;
   stack.data[stack.size].string = (String) malloc(length + 1);
   if (stack.data[stack.size].string == NULL)
-    {
-      backtrace();
-      printf("Cannot realloc memory for append string \"%s\" "
-             "to function stack.", string);
-      exit(1);
-    }
+      stop("Cannot realloc memory for append string \"%s\" "
+           "to function stack.", buffer);
   else
-    strcpy(stack.data[stack.size].string, string);
+    strcpy(stack.data[stack.size].string, buffer);
 
   ++ stack.size;
   if (stack.size == stack.real_size)
@@ -71,7 +91,7 @@ append (const String string, int line)
     }
 }
 
-#define begin(string) append(string, __LINE__)
+#define begin(...) begin_with_line(__LINE__, __VA_ARGS__)
 
 void
 end (void)
@@ -132,11 +152,5 @@ int
 main(int argc, char **argv)
 {
   init();
-  begin("main");
-  begin("Hello, World!");
-  backtrace();
-  end();
-  backtrace();
-  end();
 }
 
